@@ -269,6 +269,9 @@ class PullusCompetitorAnalyzer:
             ]
 
             credentials_source = (self.credentials_path or "").strip()
+            if (credentials_source.startswith('"') and credentials_source.endswith('"')) or \
+               (credentials_source.startswith("'") and credentials_source.endswith("'")):
+                credentials_source = credentials_source[1:-1].strip()
 
             def _parse_credentials(raw_value):
                 try:

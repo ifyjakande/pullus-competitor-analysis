@@ -44,6 +44,9 @@ class EmailAlerts:
             return None
 
         credentials_value = credentials_value.strip()
+        if (credentials_value.startswith('"') and credentials_value.endswith('"')) or \
+           (credentials_value.startswith("'") and credentials_value.endswith("'")):
+            credentials_value = credentials_value[1:-1].strip()
         scopes = [
             'https://www.googleapis.com/auth/spreadsheets.readonly',
             'https://www.googleapis.com/auth/drive.metadata.readonly'

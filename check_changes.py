@@ -39,6 +39,9 @@ def get_credentials():
         ]
 
         credentials_value = credentials_path.strip()
+        if (credentials_value.startswith('"') and credentials_value.endswith('"')) or \
+           (credentials_value.startswith("'") and credentials_value.endswith("'")):
+            credentials_value = credentials_value[1:-1].strip()
 
         def _parse_credentials(raw_value):
             try:
@@ -47,6 +50,7 @@ def get_credentials():
                 return None
 
         credentials_info = _parse_credentials(credentials_value)
+        credential_source = None
 
         if credentials_info is None:
             cleaned = ''.join(credentials_value.split())
@@ -60,13 +64,20 @@ def get_credentials():
                         decoded_str = decoded_bytes.decode('utf-8').strip()
                         credentials_info = _parse_credentials(decoded_str)
                         if credentials_info is not None:
+                            credential_source = 'base64'
                             break
                     except (binascii.Error, UnicodeDecodeError):
                         continue
 
+        else:
+            credential_source = 'embedded'
+
         if credentials_info is not None:
+            source_label = 'embedded JSON' if credential_source == 'embedded' else 'base64 JSON'
+            print(f"🔑 Using {source_label} service account credentials")
             return Credentials.from_service_account_info(credentials_info, scopes=scopes)
 
+        print("🔑 Using service account credentials from file path")
         return Credentials.from_service_account_file(credentials_value, scopes=scopes)
 
     except FileNotFoundError:

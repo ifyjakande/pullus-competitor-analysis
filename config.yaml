@@ -103,3 +103,15 @@ confidence:
   medium_threshold: 3  # 3-4 competitors = MEDIUM confidence
   low_threshold: 2     # 2 competitors = LOW confidence
   # 0-1 competitors = VERY LOW confidence
+
+# Source Data Worksheets
+source_worksheets:
+  - Abuja_Entry
+  - Kaduna_Entry
+  - Kano_Entry
+
+# Email Alert Settings
+email:
+  enabled: true
+  subject_template: "📊 Pullus Market Intel - {date}"
+  freshness_threshold_days: 7  # Ignore data older than 7 days in alerts

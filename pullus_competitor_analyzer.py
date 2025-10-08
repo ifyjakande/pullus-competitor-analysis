@@ -14,8 +14,11 @@ import time
 import random
 import os
 import yaml
+import json
+import argparse
 from functools import wraps
 from dotenv import load_dotenv
+from email_alerts import EmailAlerts
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -205,7 +208,56 @@ class PullusCompetitorAnalyzer:
             'heatmap_losing': {'red': 0.95, 'green': 0.85, 'blue': 0.85}
         }
         self.colors = self.config.get('colors', default_colors)
-    
+
+    def load_processed_dates(self):
+        """Load dates that have already been alerted about"""
+        try:
+            with open('last_processed.json', 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {'Abuja': [], 'Kaduna': [], 'Kano': []}
+
+    def save_processed_dates(self, processed_dates):
+        """Save processed dates to file"""
+        try:
+            with open('last_processed.json', 'w') as f:
+                json.dump(processed_dates, f, indent=2)
+            logger.info("✅ Saved processed dates")
+        except Exception as e:
+            logger.error(f"❌ Error saving processed dates: {sanitize_error(e)}")
+
+    def detect_fresh_dates(self, daily_analysis):
+        """
+        Detect dates that haven't been alerted about yet.
+        Returns dict of {location: [new_dates]} or None if no new dates.
+        """
+        processed_dates = self.load_processed_dates()
+        new_dates = {}
+
+        for location, location_data in daily_analysis.items():
+            sheet_dates = set(location_data.keys())
+            processed = set(processed_dates.get(location, []))
+            unprocessed = sheet_dates - processed
+
+            if unprocessed:
+                new_dates[location] = sorted(list(unprocessed), reverse=True)
+                logger.info(f"📅 {location}: Found {len(unprocessed)} new dates")
+
+        return new_dates if new_dates else None
+
+    def mark_dates_as_processed(self, new_dates):
+        """Mark new dates as processed"""
+        processed_dates = self.load_processed_dates()
+
+        for location, dates in new_dates.items():
+            if location not in processed_dates:
+                processed_dates[location] = []
+            processed_dates[location].extend(dates)
+            # Keep only last 30 days to prevent file bloat
+            processed_dates[location] = sorted(list(set(processed_dates[location])))[-30:]
+
+        self.save_processed_dates(processed_dates)
+
     def connect_to_sheets(self):
         """Connect to Google Sheets"""
         try:
@@ -1501,8 +1553,17 @@ class PullusCompetitorAnalyzer:
 
 def main():
     """Main function"""
-    # Load environment variables
-    load_dotenv()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Pullus Competitor Analysis')
+    parser.add_argument('--update-only', action='store_true',
+                       help='Update Google Sheets only (no email)')
+    parser.add_argument('--check-and-alert', action='store_true',
+                       help='Check for new dates and send email if found')
+    args = parser.parse_args()
+
+    # Load environment variables (CI or local .env)
+    if os.getenv('CI') != 'true':
+        load_dotenv()
 
     # Get credentials from environment variables
     CREDENTIALS_PATH = os.getenv('GOOGLE_CREDENTIALS_PATH')
@@ -1519,10 +1580,66 @@ def main():
     # Initialize analyzer with config
     analyzer = PullusCompetitorAnalyzer(CREDENTIALS_PATH, SHEET_ID, config)
 
-    if analyzer.run_analysis():
-        logger.info("🎉 Pullus Competitive Analysis completed successfully!")
+    if args.check_and_alert:
+        # Daily workflow: Check for new dates and send email
+        logger.info("🔔 Running daily alert workflow...")
+
+        if not analyzer.load_data():
+            logger.error("❌ Failed to load data")
+            return
+
+        # Get daily analysis
+        daily_analysis = analyzer.get_daily_competitive_analysis()
+        if not daily_analysis:
+            logger.error("❌ Failed to generate analysis")
+            return
+
+        # Check for new dates
+        new_dates = analyzer.detect_fresh_dates(daily_analysis)
+
+        if new_dates:
+            logger.info(f"✅ Found new dates to alert about")
+
+            # Send email
+            try:
+                email_sender = EmailAlerts(config)
+                if email_sender.send_email(daily_analysis, new_dates):
+                    logger.info("📧 Email sent successfully!")
+
+                    # Mark dates as processed
+                    analyzer.mark_dates_as_processed(new_dates)
+
+                    # Also update sheets
+                    trends = analyzer.get_historical_trends(daily_analysis)
+                    stale_data = analyzer.validate_data_freshness(analyzer.max_data_age_days)
+                    confidence_scores = analyzer.add_confidence_scores(daily_analysis)
+                    analyzer.create_management_sheets(daily_analysis, trends, confidence_scores, stale_data)
+
+                    logger.info("🎉 Daily alert workflow completed successfully!")
+                else:
+                    logger.error("❌ Failed to send email")
+            except Exception as e:
+                logger.error(f"❌ Email workflow failed: {sanitize_error(e)}")
+        else:
+            logger.info("ℹ️ No new dates found. No email sent.")
+
+    elif args.update_only:
+        # Continuous workflow: Just update sheets
+        logger.info("📊 Running sheet update only...")
+
+        if analyzer.run_analysis():
+            logger.info("✅ Sheets updated successfully!")
+        else:
+            logger.error("❌ Sheet update failed")
+
     else:
-        logger.error("❌ Analysis failed")
+        # Default: Local development - just update sheets
+        logger.info("🔧 Running local analysis...")
+
+        if analyzer.run_analysis():
+            logger.info("🎉 Analysis completed successfully!")
+        else:
+            logger.error("❌ Analysis failed")
 
 if __name__ == "__main__":
     main()

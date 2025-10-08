@@ -1,0 +1,80 @@
+name: Continuous Sheet Updates
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 minutes
+  workflow_dispatch:        # Manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_update: ${{ steps.check.outputs.needs_update }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install check dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install google-auth google-api-python-client gspread python-dotenv
+
+    - name: Check for source data changes
+      id: check
+      env:
+        GOOGLE_CREDENTIALS_PATH: ${{ secrets.GOOGLE_CREDENTIALS_PATH }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        CI: "true"
+      run: |
+        python check_changes.py > check_output.txt 2>&1
+        if grep -q "NEEDS_UPDATE=true" check_output.txt; then
+          echo "needs_update=true" >> $GITHUB_OUTPUT
+        else
+          echo "needs_update=false" >> $GITHUB_OUTPUT
+        fi
+        cat check_output.txt
+
+    - name: Commit hash file if changed
+      if: steps.check.outputs.needs_update == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -f last_source_hash.json
+        git diff --staged --quiet || git commit -m "Update source data hash [skip ci]"
+        git push
+
+  update-sheets:
+    needs: check-changes
+    if: always() && needs.check-changes.result == 'success' && needs.check-changes.outputs.needs_update == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Update Google Sheets (No Email)
+      env:
+        GOOGLE_CREDENTIALS_PATH: ${{ secrets.GOOGLE_CREDENTIALS_PATH }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        CI: "true"
+      run: |
+        python pullus_competitor_analyzer.py --update-only

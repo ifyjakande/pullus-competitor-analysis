@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pullus Market Intelligence</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .alert-box {
+            background-color: #f0f7ff;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+        }
+        .alert-box h3 {
+            margin: 0 0 10px 0;
+            color: #1e40af;
+            font-size: 16px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #1f2937;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .table th {
+            background-color: #f9fafb;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-urgent {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .badge-winning {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .location-card {
+            background-color: #f9fafb;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #e5e7eb;
+        }
+        .location-card h4 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            color: #1f2937;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #2563eb;
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .cta-button:hover {
+            background-color: #1d4ed8;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Pullus Market Intelligence</h1>
+            <p>Competitive Analysis Report - {{ date }}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Alert Box for Multiple Dates -->
+            {% if is_multiple_dates %}
+            <div class="alert-box">
+                <h3>Data Update Summary</h3>
+                <p>New competitor data detected for <strong>{{ date_count }} dates</strong>:</p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    {% for date_item in all_dates[:5] %}
+                    <li>{{ date_item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Urgent Items Section -->
+            {% if urgent_items %}
+            <div class="section">
+                <div class="section-title">🔴 Urgent - Above Market Pricing</div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Location & Product</th>
+                            <th style="text-align: right;">Price Gap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in urgent_items %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.location }}</strong> - {{ item.product }}
+                                <br><span style="color: #6b7280; font-size: 12px;">{{ item.date }}</span>
+                            </td>
+                            <td style="text-align: right;">
+                                <span class="status-badge badge-urgent">
+                                    ₦{{ "{:,.0f}".format(item.difference) }} above
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Winning Products Section -->
+            {% if winning_products %}
+            <div class="section">
+                <div class="section-title">🟢 Winning Positions</div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Location & Product</th>
+                            <th style="text-align: right;">Our Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in winning_products %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.location }}</strong> - {{ item.product }}
+                                <br><span style="color: #6b7280; font-size: 12px;">{{ item.date }}</span>
+                            </td>
+                            <td style="text-align: right;">
+                                <span class="status-badge badge-winning">
+                                    ₦{{ "{:,.0f}".format(item.price) }} (Best)
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Location Summary Section -->
+            {% if location_summaries %}
+            <div class="section">
+                <div class="section-title">📈 Location Performance</div>
+                {% for location, summary in location_summaries.items() %}
+                <div class="location-card">
+                    <h4>{{ summary.status_emoji }} {{ location }}</h4>
+                    <p style="margin: 0; font-size: 14px; color: #4b5563;">
+                        Winning: <strong>{{ summary.wins }}/{{ summary.total }}</strong> products
+                        <span style="margin-left: 10px;">Win Rate: <strong>{{ "{:.1f}".format(summary.win_rate) }}%</strong></span>
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Call to Action -->
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="{{ sheet_url }}" class="cta-button">
+                    View Full Analysis 🔗
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>Pullus Africa</strong></p>
+            <p>Automated Competitive Intelligence System</p>
+            <p style="margin-top: 10px;">This alert was sent because new competitor data was detected.</p>
+            <p style="color: #9ca3af;">© {{ current_year }} Pullus Africa. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

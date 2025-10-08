@@ -29,6 +29,8 @@ Thumbs.db
 # Google Credentials (DO NOT COMMIT!)
 *.json
 !config.json
+!last_source_hash.json
+!last_processed.json
 
 # Excel files with potentially sensitive data
 *.xlsx

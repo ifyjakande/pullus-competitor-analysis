@@ -9,3 +9,7 @@ numpy>=1.23.0
 # Configuration Management
 python-dotenv>=1.0.0
 pyyaml>=6.0.0
+
+# Email Alerting
+jinja2>=3.1.0
+premailer>=3.10.0

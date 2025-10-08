@@ -269,29 +269,34 @@ class PullusCompetitorAnalyzer:
             ]
 
             credentials_source = (self.credentials_path or "").strip()
-            json_candidates = []
 
-            if credentials_source.startswith("{"):
-                json_candidates.append(credentials_source)
+            def _parse_credentials(raw_value):
+                try:
+                    return json.loads(raw_value)
+                except json.JSONDecodeError:
+                    return None
+
+            credentials_info = _parse_credentials(credentials_source)
+
+            if credentials_info is None:
+                cleaned = ''.join(credentials_source.split())
+                if cleaned:
+                    padding = len(cleaned) % 4
+                    if padding:
+                        cleaned += '=' * (4 - padding)
+                    for decoder in (base64.b64decode, base64.urlsafe_b64decode):
+                        try:
+                            decoded_bytes = decoder(cleaned)
+                            decoded_str = decoded_bytes.decode('utf-8').strip()
+                            credentials_info = _parse_credentials(decoded_str)
+                            if credentials_info is not None:
+                                break
+                        except (binascii.Error, UnicodeDecodeError):
+                            continue
+
+            if credentials_info is not None:
+                credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
             else:
-                try:
-                    decoded_bytes = base64.b64decode(credentials_source, validate=True)
-                    decoded_str = decoded_bytes.decode('utf-8').strip()
-                    if decoded_str.startswith('{'):
-                        json_candidates.append(decoded_str)
-                except (binascii.Error, UnicodeDecodeError):
-                    pass
-
-            credentials = None
-            for candidate in json_candidates:
-                try:
-                    credentials_info = json.loads(candidate)
-                    credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
-                    break
-                except (json.JSONDecodeError, ValueError):
-                    continue
-
-            if credentials is None:
                 credentials = Credentials.from_service_account_file(credentials_source, scopes=scopes)
             self.client = gspread.authorize(credentials)
             self.spreadsheet = self.client.open_by_key(self.sheet_id)

@@ -40,20 +40,34 @@ def get_credentials():
 
         credentials_value = credentials_path.strip()
 
-        if credentials_value.startswith('{'):
-            credentials_info = json.loads(credentials_value)
+        def _parse_credentials(raw_value):
+            try:
+                return json.loads(raw_value)
+            except json.JSONDecodeError:
+                return None
+
+        credentials_info = _parse_credentials(credentials_value)
+
+        if credentials_info is None:
+            cleaned = ''.join(credentials_value.split())
+            if cleaned:
+                padding = len(cleaned) % 4
+                if padding:
+                    cleaned += '=' * (4 - padding)
+                for decoder in (base64.b64decode, base64.urlsafe_b64decode):
+                    try:
+                        decoded_bytes = decoder(cleaned)
+                        decoded_str = decoded_bytes.decode('utf-8').strip()
+                        credentials_info = _parse_credentials(decoded_str)
+                        if credentials_info is not None:
+                            break
+                    except (binascii.Error, UnicodeDecodeError):
+                        continue
+
+        if credentials_info is not None:
             return Credentials.from_service_account_info(credentials_info, scopes=scopes)
 
-        try:
-            decoded_bytes = base64.b64decode(credentials_value, validate=True)
-            decoded_str = decoded_bytes.decode('utf-8').strip()
-            if decoded_str.startswith('{'):
-                credentials_info = json.loads(decoded_str)
-                return Credentials.from_service_account_info(credentials_info, scopes=scopes)
-        except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError):
-            pass
-
-        return Credentials.from_service_account_file(credentials_path, scopes=scopes)
+        return Credentials.from_service_account_file(credentials_value, scopes=scopes)
 
     except FileNotFoundError:
         print(f"❌ Credentials file not found: {credentials_path}")

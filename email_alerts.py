@@ -50,25 +50,32 @@ class EmailAlerts:
         ]
 
         try:
-            json_sources = []
-
-            if credentials_value.startswith('{'):
-                json_sources.append(credentials_value)
-            else:
+            def _parse_credentials(raw_value):
                 try:
-                    decoded_bytes = base64.b64decode(credentials_value, validate=True)
-                    decoded_str = decoded_bytes.decode('utf-8').strip()
-                    if decoded_str.startswith('{'):
-                        json_sources.append(decoded_str)
-                except (binascii.Error, UnicodeDecodeError):
-                    pass
+                    return json.loads(raw_value)
+                except json.JSONDecodeError:
+                    return None
 
-            for source in json_sources:
-                try:
-                    credentials_info = json.loads(source)
-                    return Credentials.from_service_account_info(credentials_info, scopes=scopes)
-                except (json.JSONDecodeError, ValueError):
-                    continue
+            credentials_info = _parse_credentials(credentials_value)
+
+            if credentials_info is None:
+                cleaned = ''.join(credentials_value.split())
+                if cleaned:
+                    padding = len(cleaned) % 4
+                    if padding:
+                        cleaned += '=' * (4 - padding)
+                    for decoder in (base64.b64decode, base64.urlsafe_b64decode):
+                        try:
+                            decoded_bytes = decoder(cleaned)
+                            decoded_str = decoded_bytes.decode('utf-8').strip()
+                            credentials_info = _parse_credentials(decoded_str)
+                            if credentials_info is not None:
+                                break
+                        except (binascii.Error, UnicodeDecodeError):
+                            continue
+
+            if credentials_info is not None:
+                return Credentials.from_service_account_info(credentials_info, scopes=scopes)
 
             return Credentials.from_service_account_file(credentials_value, scopes=scopes)
         except FileNotFoundError:

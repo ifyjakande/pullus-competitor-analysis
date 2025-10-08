@@ -717,12 +717,11 @@ class PullusCompetitorAnalyzer:
             
             # Enhanced headers with confidence
             headers = ["Date", "Product", "Pullus Price", "Cheapest Competitor", "Their Price", "Status", "Message", "Confidence"]
-            ws.update(range_name='A1:H1', values=[headers])
-            
+
             # Prepare data rows (most recent dates first)
             data_rows = []
             color_mapping = []  # Track which rows need which colors
-            
+
             for date in sorted(location_data.keys(), reverse=True):
                 date_data = location_data[date]
                 for product, product_data in date_data.items():
@@ -753,24 +752,27 @@ class PullusCompetitorAnalyzer:
                     ]
                     data_rows.append(row)
                     color_mapping.append(product_data['status_code'])
-            
+
+            # Combine headers and data in single update to reduce API calls
+            all_data = [headers]
             if data_rows:
-                ws.update(range_name=f'A2:H{len(data_rows)+1}', values=data_rows)
-                
-                # Prepare batch formatting requests
-                format_requests = []
-                
-                # Header formatting
-                format_requests.append(self.create_row_format_request(ws, 0, 'header', 8))
-                
-                # Data row formatting
-                for i, status_code in enumerate(color_mapping):
-                    row_index = i + 1  # +1 for header row
-                    if status_code in self.colors:
-                        format_requests.append(self.create_row_format_request(ws, row_index, status_code, 8))
-                
-                # Apply all formatting in one batch
-                self.batch_format_sheet(ws, format_requests)
+                all_data.extend(data_rows)
+            ws.update(range_name=f'A1:H{len(all_data)}', values=all_data)
+
+            # Prepare batch formatting requests
+            format_requests = []
+
+            # Header formatting
+            format_requests.append(self.create_row_format_request(ws, 0, 'header', 8))
+
+            # Data row formatting
+            for i, status_code in enumerate(color_mapping):
+                row_index = i + 1  # +1 for header row
+                if status_code in self.colors:
+                    format_requests.append(self.create_row_format_request(ws, row_index, status_code, 8))
+
+            # Apply all formatting in one batch
+            self.batch_format_sheet(ws, format_requests)
             
             # Auto-resize columns
             self.auto_resize_columns(ws)
@@ -863,47 +865,43 @@ class PullusCompetitorAnalyzer:
             except:
                 ws = self.rate_limited_sheets.add_worksheet(title="Heatmap_Dashboard", rows=50, cols=10)
             
-            # Title and headers
-            ws.update(range_name='A1:J1', values=[["🔥 PULLUS COMPETITIVE HEATMAP - WIN/LOSS PATTERNS", "", "", "", "", "", "", "", "", ""]])
-            ws.update(range_name='A2:J2', values=[["Product", "Abuja", "Abuja %", "Kaduna", "Kaduna %", "Kano", "Kano %", "Overall Win Rate", "Trend", "Priority"]])
-            
             # Build heatmap data
             all_products = set()
             for location_trends in trends.values():
                 all_products.update(location_trends.keys())
-            
+
             data_rows = []
-            
+
             for product in sorted(all_products):
                 row = [product]
-                
+
                 # Get data for each location
                 total_wins = 0
                 total_checks = 0
                 location_results = []
-                
+
                 for location in ['Abuja', 'Kaduna', 'Kano']:
                     if location in trends and product in trends[location]:
                         trend_data = trends[location][product]
                         emoji = trend_data['recent_emoji']
                         win_rate = trend_data['win_rate']
-                        
+
                         row.extend([emoji, f"{win_rate:.0f}%"])
-                        
+
                         total_wins += trend_data['win_count']
                         total_checks += trend_data['total_checks']
                         location_results.append(trend_data['recent_status'])
                     else:
                         row.extend(["⚪", "N/A"])
                         location_results.append("no_data")
-                
+
                 # Overall metrics
                 overall_win_rate = (total_wins / total_checks * 100) if total_checks > 0 else 0
-                
+
                 # Determine trend across locations
                 winning_count = location_results.count('winning')
                 losing_count = location_results.count('losing')
-                
+
                 if winning_count >= 2:
                     trend_arrow = "📈 Strong"
                     priority = "🟢 Maintain"
@@ -913,40 +911,46 @@ class PullusCompetitorAnalyzer:
                 else:
                     trend_arrow = "➡️ Mixed"
                     priority = "🟡 Monitor"
-                
+
                 row.extend([f"{overall_win_rate:.0f}%", trend_arrow, priority])
                 data_rows.append(row)
-            
+
+            # Combine title, headers, and data in single update to reduce API calls
+            all_data = [
+                ["🔥 PULLUS COMPETITIVE HEATMAP - WIN/LOSS PATTERNS", "", "", "", "", "", "", "", "", ""],
+                ["Product", "Abuja", "Abuja %", "Kaduna", "Kaduna %", "Kano", "Kano %", "Overall Win Rate", "Trend", "Priority"]
+            ]
             if data_rows:
-                ws.update(range_name=f'A3:J{len(data_rows)+2}', values=data_rows)
+                all_data.extend(data_rows)
+            ws.update(range_name=f'A1:J{len(all_data)}', values=all_data)
 
-                # Initial auto-resize after data population
-                self.auto_resize_columns(ws)
+            # Initial auto-resize after data population
+            self.auto_resize_columns(ws)
 
-                # Prepare batch formatting
-                format_requests = []
+            # Prepare batch formatting
+            format_requests = []
 
-                # Title and header formatting
-                format_requests.append(self.create_row_format_request(ws, 0, 'header', 10))  # Title
-                format_requests.append(self.create_row_format_request(ws, 1, 'metric', 10))  # Column headers
+            # Title and header formatting
+            format_requests.append(self.create_row_format_request(ws, 0, 'header', 10))  # Title
+            format_requests.append(self.create_row_format_request(ws, 1, 'metric', 10))  # Column headers
 
-                # Data rows formatting based on performance
-                for i, row in enumerate(data_rows):
-                    row_idx = i + 2  # +2 for title and header rows
-                    priority = row[-1]  # Last column is priority
+            # Data rows formatting based on performance
+            for i, row in enumerate(data_rows):
+                row_idx = i + 2  # +2 for title and header rows
+                priority = row[-1]  # Last column is priority
 
-                    if "🔴" in priority:
-                        format_requests.append(self.create_row_format_request(ws, row_idx, 'losing', 10))
-                    elif "🟢" in priority:
-                        format_requests.append(self.create_row_format_request(ws, row_idx, 'winning', 10))
-                    else:
-                        format_requests.append(self.create_row_format_request(ws, row_idx, 'competitive', 10))
+                if "🔴" in priority:
+                    format_requests.append(self.create_row_format_request(ws, row_idx, 'losing', 10))
+                elif "🟢" in priority:
+                    format_requests.append(self.create_row_format_request(ws, row_idx, 'winning', 10))
+                else:
+                    format_requests.append(self.create_row_format_request(ws, row_idx, 'competitive', 10))
 
-                # Apply all formatting in one batch
-                self.batch_format_sheet(ws, format_requests)
+            # Apply all formatting in one batch
+            self.batch_format_sheet(ws, format_requests)
 
-                # Set specific optimal column widths for heatmap dashboard
-                self.set_heatmap_column_widths(ws)
+            # Set specific optimal column widths for heatmap dashboard
+            self.set_heatmap_column_widths(ws)
             
             logger.info("✅ Heatmap dashboard created with visual formatting")
             
@@ -964,8 +968,6 @@ class PullusCompetitorAnalyzer:
             except:
                 ws = self.rate_limited_sheets.add_worksheet(title="Executive_Scorecard", rows=50, cols=6)
             
-            # Title
-            ws.update(range_name='A1:F1', values=[["🏆 PULLUS COMPETITIVE SCORECARD - TODAY'S POSITION", "", "", "", "", ""]])
             
             # Calculate overall metrics
             total_winning = 0
@@ -1075,8 +1077,12 @@ class PullusCompetitorAnalyzer:
                     "", "", ""
                 ])
             
+            # Combine title and scorecard data in single update to reduce API calls
+            all_data = [["🏆 PULLUS COMPETITIVE SCORECARD - TODAY'S POSITION", "", "", "", "", ""]]
+            all_data.extend(scorecard_data)
+
             # Update the sheet
-            ws.update(range_name=f'A1:F{len(scorecard_data)}', values=scorecard_data)
+            ws.update(range_name=f'A1:F{len(all_data)}', values=all_data)
             
             # Prepare batch formatting
             format_requests = []
@@ -1127,9 +1133,6 @@ class PullusCompetitorAnalyzer:
             except:
                 ws = self.rate_limited_sheets.add_worksheet(title="How_To_Read_Results", rows=30, cols=4)
             
-            # Title
-            ws.update(range_name='A1:D1', values=[["📚 HOW TO READ PULLUS COMPETITIVE ANALYSIS", "", "", ""]])
-            
             # Simple explanations with clearer language
             explanations = [
                 ["", "", "", ""],
@@ -1169,9 +1172,13 @@ class PullusCompetitorAnalyzer:
                 ["Weekly: Check heatmap", "See overall patterns", "Strategic positioning", "Adjust pricing strategy"],
                 ["Monthly: Review win rates", "Track improvement", "Measure pricing success", "Set new pricing targets"]
             ]
-            
-            # Add explanations to sheet
-            ws.update(range_name=f'A1:D{len(explanations)}', values=explanations)
+
+            # Combine title and explanations in single update to reduce API calls
+            all_data = [["📚 HOW TO READ PULLUS COMPETITIVE ANALYSIS", "", "", ""]]
+            all_data.extend(explanations)
+
+            # Add all data to sheet
+            ws.update(range_name=f'A1:D{len(all_data)}', values=all_data)
             
             # Prepare batch formatting
             format_requests = []

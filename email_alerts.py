@@ -194,9 +194,9 @@ class EmailAlerts:
     def generate_subject(self, email_data):
         """Generate email subject based on data"""
         if email_data['is_multiple_dates']:
-            return f"📊 Pullus Market Intel Update - {email_data['date_count']} dates"
+            return f"Pullus Market Intel Update - {email_data['date_count']} dates"
         else:
-            return f"📊 Pullus Market Intel - {email_data['date']}"
+            return f"Pullus Market Intel - {email_data['date']}"
 
     def send_email(self, daily_analysis, new_dates):
         """Send professional HTML email"""

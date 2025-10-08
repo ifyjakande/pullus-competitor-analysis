@@ -265,7 +265,13 @@ class PullusCompetitorAnalyzer:
                 "https://www.googleapis.com/auth/spreadsheets",
                 "https://www.googleapis.com/auth/drive"
             ]
-            credentials = Credentials.from_service_account_file(self.credentials_path, scopes=scopes)
+
+            credentials_source = (self.credentials_path or "").strip()
+            if credentials_source.startswith("{"):
+                credentials_info = json.loads(credentials_source)
+                credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+            else:
+                credentials = Credentials.from_service_account_file(self.credentials_path, scopes=scopes)
             self.client = gspread.authorize(credentials)
             self.spreadsheet = self.client.open_by_key(self.sheet_id)
             self.rate_limited_sheets = RateLimitedGoogleSheets(self.spreadsheet)

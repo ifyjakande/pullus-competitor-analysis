@@ -6,11 +6,13 @@ Sends HTML emails via Gmail SMTP with market intelligence insights
 
 import os
 import smtplib
+import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from jinja2 import Template
 from premailer import transform
+from google.oauth2.service_account import Credentials
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,10 +29,37 @@ class EmailAlerts:
         self.smtp_password = os.getenv('SMTP_PASSWORD')
         self.email_sender = os.getenv('EMAIL_SENDER')
         self.email_recipient = os.getenv('EMAIL_RECIPIENT')
+        self.google_credentials = self._load_google_credentials()
 
         # Validate required credentials
         if not all([self.smtp_username, self.smtp_password, self.email_sender, self.email_recipient]):
             raise ValueError("Missing required email credentials in environment")
+
+    def _load_google_credentials(self):
+        """Load Google service account credentials from JSON content or file path"""
+        credentials_value = os.getenv('GOOGLE_CREDENTIALS_PATH')
+        if not credentials_value:
+            return None
+
+        credentials_value = credentials_value.strip()
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets.readonly',
+            'https://www.googleapis.com/auth/drive.metadata.readonly'
+        ]
+
+        try:
+            if credentials_value.startswith('{'):
+                credentials_info = json.loads(credentials_value)
+                return Credentials.from_service_account_info(credentials_info, scopes=scopes)
+            return Credentials.from_service_account_file(credentials_value, scopes=scopes)
+        except FileNotFoundError:
+            logger.warning("⚠️ Google credentials file not found; continuing without Sheets access")
+        except json.JSONDecodeError:
+            logger.warning("⚠️ Invalid Google credentials JSON; continuing without Sheets access")
+        except Exception as exc:
+            logger.warning(f"⚠️ Unable to load Google credentials: {exc.__class__.__name__}")
+
+        return None
 
     def load_template(self):
         """Load HTML email template"""

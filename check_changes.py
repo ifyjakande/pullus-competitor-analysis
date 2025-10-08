@@ -31,13 +31,27 @@ def get_credentials():
         raise ValueError("GOOGLE_CREDENTIALS_PATH environment variable not set")
 
     try:
-        credentials = Credentials.from_service_account_file(
-            credentials_path,
-            scopes=[
-                'https://www.googleapis.com/auth/spreadsheets.readonly',
-                'https://www.googleapis.com/auth/drive.metadata.readonly'
-            ]
-        )
+        # Check if it's JSON content (CI) or a file path (local)
+        if credentials_path.strip().startswith('{'):
+            # It's JSON content from GitHub secret
+            import json
+            credentials_info = json.loads(credentials_path)
+            credentials = Credentials.from_service_account_info(
+                credentials_info,
+                scopes=[
+                    'https://www.googleapis.com/auth/spreadsheets.readonly',
+                    'https://www.googleapis.com/auth/drive.metadata.readonly'
+                ]
+            )
+        else:
+            # It's a file path (local development)
+            credentials = Credentials.from_service_account_file(
+                credentials_path,
+                scopes=[
+                    'https://www.googleapis.com/auth/spreadsheets.readonly',
+                    'https://www.googleapis.com/auth/drive.metadata.readonly'
+                ]
+            )
         return credentials
 
     except FileNotFoundError:

@@ -33,6 +33,7 @@ jobs:
       env:
         GOOGLE_CREDENTIALS_PATH: ${{ secrets.GOOGLE_CREDENTIALS_PATH }}
         GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        SOURCE_WORKSHEETS: ${{ secrets.SOURCE_WORKSHEETS }}
         CI: "true"
       run: |
         python check_changes.py > check_output.txt 2>&1

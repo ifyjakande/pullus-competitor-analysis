@@ -168,7 +168,11 @@ def main():
             sys.exit(1)
 
         # Source worksheets to monitor
-        source_worksheets = ['Abuja_Entry', 'Kaduna_Entry', 'Kano_Entry']
+        worksheets_env = os.getenv('SOURCE_WORKSHEETS', '').strip()
+        if worksheets_env:
+            source_worksheets = [w.strip() for w in worksheets_env.split(',') if w.strip()]
+        else:
+            source_worksheets = ['Abuja_Entry', 'Kaduna_Entry', 'Kano_Entry']
 
         print(f"🔍 Checking for changes in source worksheets: {', '.join(source_worksheets)}...")
 

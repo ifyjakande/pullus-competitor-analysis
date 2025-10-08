@@ -4,6 +4,8 @@ Professional email alerting module for Pullus Competitor Analysis
 Sends HTML emails via Gmail SMTP with market intelligence insights
 """
 
+import base64
+import binascii
 import os
 import smtplib
 import json
@@ -48,9 +50,26 @@ class EmailAlerts:
         ]
 
         try:
+            json_sources = []
+
             if credentials_value.startswith('{'):
-                credentials_info = json.loads(credentials_value)
-                return Credentials.from_service_account_info(credentials_info, scopes=scopes)
+                json_sources.append(credentials_value)
+            else:
+                try:
+                    decoded_bytes = base64.b64decode(credentials_value, validate=True)
+                    decoded_str = decoded_bytes.decode('utf-8').strip()
+                    if decoded_str.startswith('{'):
+                        json_sources.append(decoded_str)
+                except (binascii.Error, UnicodeDecodeError):
+                    pass
+
+            for source in json_sources:
+                try:
+                    credentials_info = json.loads(source)
+                    return Credentials.from_service_account_info(credentials_info, scopes=scopes)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+
             return Credentials.from_service_account_file(credentials_value, scopes=scopes)
         except FileNotFoundError:
             logger.warning("⚠️ Google credentials file not found; continuing without Sheets access")

@@ -4,6 +4,8 @@ Pullus Competitor Analysis Engine
 Provides clean market intelligence for management decision-making
 """
 
+import base64
+import binascii
 import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
@@ -267,11 +269,30 @@ class PullusCompetitorAnalyzer:
             ]
 
             credentials_source = (self.credentials_path or "").strip()
+            json_candidates = []
+
             if credentials_source.startswith("{"):
-                credentials_info = json.loads(credentials_source)
-                credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+                json_candidates.append(credentials_source)
             else:
-                credentials = Credentials.from_service_account_file(self.credentials_path, scopes=scopes)
+                try:
+                    decoded_bytes = base64.b64decode(credentials_source, validate=True)
+                    decoded_str = decoded_bytes.decode('utf-8').strip()
+                    if decoded_str.startswith('{'):
+                        json_candidates.append(decoded_str)
+                except (binascii.Error, UnicodeDecodeError):
+                    pass
+
+            credentials = None
+            for candidate in json_candidates:
+                try:
+                    credentials_info = json.loads(candidate)
+                    credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+                    break
+                except (json.JSONDecodeError, ValueError):
+                    continue
+
+            if credentials is None:
+                credentials = Credentials.from_service_account_file(credentials_source, scopes=scopes)
             self.client = gspread.authorize(credentials)
             self.spreadsheet = self.client.open_by_key(self.sheet_id)
             self.rate_limited_sheets = RateLimitedGoogleSheets(self.spreadsheet)

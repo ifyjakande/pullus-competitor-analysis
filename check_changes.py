@@ -5,6 +5,8 @@ Uses content hash of source worksheets (Abuja_Entry, Kaduna_Entry, Kano_Entry)
 instead of Drive API timestamp to detect actual data changes.
 """
 
+import base64
+import binascii
 import json
 import os
 import sys
@@ -31,28 +33,27 @@ def get_credentials():
         raise ValueError("GOOGLE_CREDENTIALS_PATH environment variable not set")
 
     try:
-        # Check if it's JSON content (CI) or a file path (local)
-        if credentials_path.strip().startswith('{'):
-            # It's JSON content from GitHub secret
-            import json
-            credentials_info = json.loads(credentials_path)
-            credentials = Credentials.from_service_account_info(
-                credentials_info,
-                scopes=[
-                    'https://www.googleapis.com/auth/spreadsheets.readonly',
-                    'https://www.googleapis.com/auth/drive.metadata.readonly'
-                ]
-            )
-        else:
-            # It's a file path (local development)
-            credentials = Credentials.from_service_account_file(
-                credentials_path,
-                scopes=[
-                    'https://www.googleapis.com/auth/spreadsheets.readonly',
-                    'https://www.googleapis.com/auth/drive.metadata.readonly'
-                ]
-            )
-        return credentials
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets.readonly',
+            'https://www.googleapis.com/auth/drive.metadata.readonly'
+        ]
+
+        credentials_value = credentials_path.strip()
+
+        if credentials_value.startswith('{'):
+            credentials_info = json.loads(credentials_value)
+            return Credentials.from_service_account_info(credentials_info, scopes=scopes)
+
+        try:
+            decoded_bytes = base64.b64decode(credentials_value, validate=True)
+            decoded_str = decoded_bytes.decode('utf-8').strip()
+            if decoded_str.startswith('{'):
+                credentials_info = json.loads(decoded_str)
+                return Credentials.from_service_account_info(credentials_info, scopes=scopes)
+        except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError):
+            pass
+
+        return Credentials.from_service_account_file(credentials_path, scopes=scopes)
 
     except FileNotFoundError:
         print(f"❌ Credentials file not found: {credentials_path}")

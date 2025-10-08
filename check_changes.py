@@ -77,8 +77,14 @@ def get_credentials():
             print(f"🔑 Using {source_label} service account credentials")
             return Credentials.from_service_account_info(credentials_info, scopes=scopes)
 
-        print("🔑 Using service account credentials from file path")
-        return Credentials.from_service_account_file(credentials_value, scopes=scopes)
+        if os.path.isfile(credentials_value):
+            print("🔑 Using service account credentials from file path")
+            return Credentials.from_service_account_file(credentials_value, scopes=scopes)
+
+        raise ValueError(
+            "GOOGLE_CREDENTIALS_PATH must contain either service account JSON "
+            "(raw or base64-encoded) or a valid filesystem path to the JSON file"
+        )
 
     except FileNotFoundError:
         print(f"❌ Credentials file not found: {credentials_path}")

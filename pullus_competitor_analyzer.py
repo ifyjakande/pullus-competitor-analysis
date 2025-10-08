@@ -280,6 +280,7 @@ class PullusCompetitorAnalyzer:
                     return None
 
             credentials_info = _parse_credentials(credentials_source)
+            credential_source = None
 
             if credentials_info is None:
                 cleaned = ''.join(credentials_source.split())
@@ -293,14 +294,25 @@ class PullusCompetitorAnalyzer:
                             decoded_str = decoded_bytes.decode('utf-8').strip()
                             credentials_info = _parse_credentials(decoded_str)
                             if credentials_info is not None:
+                                credential_source = 'base64'
                                 break
                         except (binascii.Error, UnicodeDecodeError):
                             continue
+            else:
+                credential_source = 'embedded'
 
             if credentials_info is not None:
+                label = 'embedded JSON' if credential_source == 'embedded' else 'base64 JSON'
+                logger.info("🔑 Loaded Google credentials from %s", label)
                 credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
-            else:
+            elif os.path.isfile(credentials_source):
+                logger.info("🔑 Loaded Google credentials from file path")
                 credentials = Credentials.from_service_account_file(credentials_source, scopes=scopes)
+            else:
+                raise ValueError(
+                    "GOOGLE_CREDENTIALS_PATH must contain either service account JSON "
+                    "(raw or base64-encoded) or a valid filesystem path to the JSON file"
+                )
             self.client = gspread.authorize(credentials)
             self.spreadsheet = self.client.open_by_key(self.sheet_id)
             self.rate_limited_sheets = RateLimitedGoogleSheets(self.spreadsheet)

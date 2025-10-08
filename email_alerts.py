@@ -60,6 +60,7 @@ class EmailAlerts:
                     return None
 
             credentials_info = _parse_credentials(credentials_value)
+            credential_source = None
 
             if credentials_info is None:
                 cleaned = ''.join(credentials_value.split())
@@ -73,14 +74,26 @@ class EmailAlerts:
                             decoded_str = decoded_bytes.decode('utf-8').strip()
                             credentials_info = _parse_credentials(decoded_str)
                             if credentials_info is not None:
+                                credential_source = 'base64'
                                 break
                         except (binascii.Error, UnicodeDecodeError):
                             continue
+            else:
+                credential_source = 'embedded'
 
             if credentials_info is not None:
+                label = 'embedded JSON' if credential_source == 'embedded' else 'base64 JSON'
+                logger.info("🔑 Loaded Google credentials from %s", label)
                 return Credentials.from_service_account_info(credentials_info, scopes=scopes)
 
-            return Credentials.from_service_account_file(credentials_value, scopes=scopes)
+            if os.path.isfile(credentials_value):
+                logger.info("🔑 Loaded Google credentials from file path")
+                return Credentials.from_service_account_file(credentials_value, scopes=scopes)
+
+            raise ValueError(
+                "GOOGLE_CREDENTIALS_PATH must contain either service account JSON "
+                "(raw or base64-encoded) or a valid filesystem path to the JSON file"
+            )
         except FileNotFoundError:
             logger.warning("⚠️ Google credentials file not found; continuing without Sheets access")
         except json.JSONDecodeError:

@@ -235,15 +235,34 @@ class PullusCompetitorAnalyzer:
         """
         processed_dates = self.load_processed_dates()
         new_dates = {}
+        pruned_processed = {}
+        processed_changed = False
 
         for location, location_data in daily_analysis.items():
             sheet_dates = set(location_data.keys())
-            processed = set(processed_dates.get(location, []))
-            unprocessed = sheet_dates - processed
+            processed_set = set(processed_dates.get(location, []))
+            valid_processed = processed_set & sheet_dates
+
+            if valid_processed != processed_set:
+                processed_changed = True
+
+            pruned_processed[location] = sorted(list(valid_processed))[-30:]
+
+            unprocessed = sheet_dates - valid_processed
 
             if unprocessed:
                 new_dates[location] = sorted(list(unprocessed), reverse=True)
                 logger.info(f"📅 {location}: Found {len(unprocessed)} new dates")
+
+        # Carry over any locations missing from current analysis
+        for location, dates in processed_dates.items():
+            if location not in pruned_processed:
+                pruned_processed[location] = sorted(list(set(dates)))[-30:]
+                if dates:
+                    processed_changed = True
+
+        if processed_changed:
+            self.save_processed_dates(pruned_processed)
 
         return new_dates if new_dates else None
 

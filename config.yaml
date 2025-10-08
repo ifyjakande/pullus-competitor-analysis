@@ -1,0 +1,105 @@
+# Pullus Competitor Analysis Configuration
+# Non-sensitive settings for analysis parameters
+
+# Analysis Settings
+analysis:
+  # Price difference threshold for COMPETITIVE status (in Naira)
+  competitive_threshold: 200
+
+  # Maximum age of data before flagging as stale (in days)
+  max_data_age_days: 7
+
+  # Urgent review threshold - price difference requiring immediate action (in Naira)
+  urgent_review_threshold: 300
+
+# Product Categories
+products:
+  - Whole Chicken
+  - Mini Chicken
+  - Gizzard
+  - Laps
+  - Fillet - Breast
+  - Wings
+  - Breast
+  - Bone
+  - Fillet - Thigh
+  - Liver
+  - Neck
+  - Head/Leg
+  - Carcas
+
+# Locations to analyze
+locations:
+  - Abuja
+  - Kaduna
+  - Kano
+
+# Rate Limiting Settings
+rate_limiting:
+  # Maximum API requests per minute (conservative, below Google's 60/min limit)
+  max_requests_per_minute: 50
+
+  # Maximum retries for rate limit errors
+  max_retries: 5
+
+  # Base delay for exponential backoff (in seconds)
+  base_delay: 1
+
+# Color Scheme for Sheets (RGB values 0.0 - 1.0)
+colors:
+  header:
+    red: 0.05
+    green: 0.43
+    blue: 0.99
+
+  winning:
+    red: 0.83
+    green: 0.96
+    blue: 0.88
+
+  competitive:
+    red: 0.87
+    green: 0.95
+    blue: 1.0
+
+  losing:
+    red: 1.0
+    green: 0.93
+    blue: 0.93
+
+  no_data:
+    red: 0.97
+    green: 0.98
+    blue: 0.98
+
+  metric:
+    red: 0.95
+    green: 0.97
+    blue: 1.0
+
+  data_warning:
+    red: 1.0
+    green: 0.96
+    blue: 0.87
+
+  urgent:
+    red: 0.93
+    green: 0.89
+    blue: 0.89
+
+  heatmap_winning:
+    red: 0.7
+    green: 0.9
+    blue: 0.75
+
+  heatmap_losing:
+    red: 0.95
+    green: 0.85
+    blue: 0.85
+
+# Confidence Scoring
+confidence:
+  high_threshold: 5    # 5+ competitors = HIGH confidence
+  medium_threshold: 3  # 3-4 competitors = MEDIUM confidence
+  low_threshold: 2     # 2 competitors = LOW confidence
+  # 0-1 competitors = VERY LOW confidence

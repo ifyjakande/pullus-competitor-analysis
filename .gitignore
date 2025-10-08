@@ -1,0 +1,38 @@
+# Environment variables (contains sensitive credentials)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Google Credentials (DO NOT COMMIT!)
+*.json
+!config.json
+
+# Excel files with potentially sensitive data
+*.xlsx
+*.xls
+
+# Logs
+*.log

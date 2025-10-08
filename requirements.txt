@@ -1,0 +1,11 @@
+# Google Sheets API
+gspread>=5.0.0
+google-auth>=2.0.0
+
+# Data Processing
+pandas>=1.5.0
+numpy>=1.23.0
+
+# Configuration Management
+python-dotenv>=1.0.0
+pyyaml>=6.0.0

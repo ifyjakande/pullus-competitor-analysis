@@ -729,16 +729,19 @@ class PullusCompetitorAnalyzer:
                     confidence_info = "N/A"
                     if confidence_data and location in confidence_data and date in confidence_data[location] and product in confidence_data[location][date]:
                         conf_data = confidence_data[location][date][product]
-                        confidence_info = f"{conf_data['confidence_level']} ({conf_data['competitor_count']} competitors)"
+                        competitor_count = conf_data['competitor_count']
+                        competitor_word = "competitor" if competitor_count == 1 else "competitors"
+                        confidence_info = f"{conf_data['confidence_level']} ({competitor_count} {competitor_word})"
                     else:
                         # Calculate basic confidence from existing data
                         competitor_count = product_data.get('all_competitors', 1) - 1
+                        competitor_word = "competitor" if competitor_count == 1 else "competitors"
                         if competitor_count >= 3:
-                            confidence_info = f"MEDIUM ({competitor_count} competitors)"
+                            confidence_info = f"MEDIUM ({competitor_count} {competitor_word})"
                         elif competitor_count >= 2:
-                            confidence_info = f"LOW ({competitor_count} competitors)"
+                            confidence_info = f"LOW ({competitor_count} {competitor_word})"
                         else:
-                            confidence_info = f"VERY LOW ({competitor_count} competitor)"
+                            confidence_info = f"VERY LOW ({competitor_count} {competitor_word})"
 
                     row = [
                         date,
@@ -1273,12 +1276,13 @@ class PullusCompetitorAnalyzer:
                             confidence = "NO DATA"
                             confidence_score = 0
 
+                        competitor_word = "competitor" if competitor_count == 1 else "competitors"
                         date_confidence[product] = {
                             'confidence_level': confidence,
                             'confidence_score': confidence_score,
                             'competitor_count': competitor_count,
                             'status': product_data['status'],
-                            'message': f"{confidence} confidence ({competitor_count} competitors)"
+                            'message': f"{confidence} confidence ({competitor_count} {competitor_word})"
                         }
 
                     location_confidence[date] = date_confidence

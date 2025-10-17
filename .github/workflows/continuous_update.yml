@@ -87,3 +87,54 @@ jobs:
         CI: "true"
       run: |
         python pullus_competitor_analyzer.py --update-only
+
+    - name: Send Google Chat notification
+      if: success()
+      env:
+        GOOGLE_CHAT_WEBHOOK: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      run: |
+        TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+        SHEET_URL="https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit"
+        
+        curl -X POST "${GOOGLE_CHAT_WEBHOOK}" \
+          -H 'Content-Type: application/json' \
+          -d "{
+            \"cardsV2\": [{
+              \"cardId\": \"pullus-update-$(date +%s)\",
+              \"card\": {
+                \"header\": {
+                  \"title\": \"Pullus Competitor Data Updated\",
+                  \"subtitle\": \"${TIMESTAMP}\"
+                },
+                \"sections\": [{
+                  \"widgets\": [
+                    {
+                      \"decoratedText\": {
+                        \"topLabel\": \"Status\",
+                        \"text\": \"Source data changes detected and processed\"
+                      }
+                    },
+                    {
+                      \"decoratedText\": {
+                        \"topLabel\": \"Action Taken\",
+                        \"text\": \"Analysis sheets updated with latest competitor data\"
+                      }
+                    },
+                    {
+                      \"buttonList\": {
+                        \"buttons\": [{
+                          \"text\": \"View Updated Sheets\",
+                          \"onClick\": {
+                            \"openLink\": {
+                              \"url\": \"${SHEET_URL}\"
+                            }
+                          }
+                        }]
+                      }
+                    }
+                  ]
+                }]
+              }
+            }]
+          }"

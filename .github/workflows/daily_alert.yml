@@ -1,5 +1,10 @@
 name: Daily Email Alerts
 
+# This workflow runs every day at 8AM WAT to check for new dates in the data
+# and send email alerts. It does NOT depend on source data hash changes because
+# the continuous_update workflow may have already processed those changes.
+# Instead, it checks last_processed.json to find dates that need email alerts.
+
 on:
   schedule:
     - cron: '0 7 * * *'  # 8am WAT (7am UTC)
@@ -9,58 +14,7 @@ permissions:
   contents: write
 
 jobs:
-  check-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      needs_update: ${{ steps.check.outputs.needs_update }}
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-
-    - name: Install check dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install google-auth google-api-python-client gspread python-dotenv
-
-    - name: Check for source data changes
-      id: check
-      env:
-        GOOGLE_CREDENTIALS_PATH: ${{ secrets.GOOGLE_CREDENTIALS_PATH }}
-        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-        SOURCE_WORKSHEETS: ${{ secrets.SOURCE_WORKSHEETS }}
-        CI: "true"
-      run: |
-        python check_changes.py > check_output.txt 2>&1
-        if grep -q "NEEDS_UPDATE=true" check_output.txt; then
-          echo "needs_update=true" >> $GITHUB_OUTPUT
-        else
-          echo "needs_update=false" >> $GITHUB_OUTPUT
-        fi
-        cat check_output.txt
-
-    - name: Commit hash file if changed
-      if: steps.check.outputs.needs_update == 'true'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add -f last_source_hash.json
-        if git diff --staged --quiet; then
-          echo "No hash changes to commit"
-        else
-          git commit -m "Update source data hash [skip ci]"
-          git pull --rebase origin master
-          git push
-        fi
-
-  send-alert:
-    needs: check-changes
-    if: always() && needs.check-changes.result == 'success' && needs.check-changes.outputs.needs_update == 'true'
+  check-and-alert:
     runs-on: ubuntu-latest
 
     steps:
@@ -77,7 +31,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Check for new dates and send email
+    - name: Check for new dates and send email alerts
       env:
         GOOGLE_CREDENTIALS_PATH: ${{ secrets.GOOGLE_CREDENTIALS_PATH }}
         GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
@@ -89,17 +43,19 @@ jobs:
         EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         CI: "true"
       run: |
+        echo "🔍 Checking for new dates to alert about..."
         python pullus_competitor_analyzer.py --check-and-alert
 
     - name: Commit updated tracking files
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add -f last_processed.json last_source_hash.json
+        git add -f last_processed.json
         if git diff --staged --quiet; then
-          echo "No tracking changes to commit"
+          echo "✅ No new dates to process"
         else
-          git commit -m "Update processed dates and hash [skip ci]"
+          git commit -m "Update processed dates after email alert [skip ci]"
           git pull --rebase origin master
           git push
+          echo "✅ Updated processed dates in repository"
         fi

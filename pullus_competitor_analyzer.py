@@ -714,7 +714,7 @@ class PullusCompetitorAnalyzer:
                 self.clear_sheet_formatting(ws)
             except:
                 ws = self.rate_limited_sheets.add_worksheet(title=sheet_name, rows=100, cols=7)
-            
+
             # Enhanced headers with confidence
             headers = ["Date", "Product", "Pullus Price", "Cheapest Competitor", "Their Price", "Status", "Message", "Confidence"]
 
@@ -722,7 +722,12 @@ class PullusCompetitorAnalyzer:
             data_rows = []
             color_mapping = []  # Track which rows need which colors
 
-            for date in sorted(location_data.keys(), reverse=True):
+            # Sort dates chronologically (most recent first)
+            sorted_dates = sorted(location_data.keys(),
+                                key=lambda d: pd.to_datetime(d, errors='coerce'),
+                                reverse=True)
+
+            for date in sorted_dates:
                 date_data = location_data[date]
                 for product, product_data in date_data.items():
                     # Get confidence info

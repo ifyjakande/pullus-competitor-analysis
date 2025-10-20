@@ -94,7 +94,7 @@ jobs:
         GOOGLE_CHAT_WEBHOOK: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
         GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
       run: |
-        TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+        TIMESTAMP=$(TZ='Africa/Lagos' date '+%Y-%m-%d %H:%M WAT')
         SHEET_URL="https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit"
         
         curl -X POST "${GOOGLE_CHAT_WEBHOOK}" \

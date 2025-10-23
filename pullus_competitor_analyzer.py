@@ -185,7 +185,7 @@ class PullusCompetitorAnalyzer:
         self.product_columns = self.config.get('products', [
             'Whole Chicken', 'Mini Chicken', 'Gizzard', 'Laps',
             'Fillet - Breast', 'Wings', 'Breast', 'Bone', 'Fillet - Thigh',
-            'Liver', 'Neck', 'Head/Leg', 'Carcas'
+            'Liver', 'Neck', 'Head/Leg', 'Carcas', 'Cut-4'
         ])
 
         # Analysis settings from config

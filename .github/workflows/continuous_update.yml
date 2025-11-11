@@ -13,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       needs_update: ${{ steps.check.outputs.needs_update }}
-      editor_name: ${{ steps.check.outputs.editor_name }}
-      editor_email: ${{ steps.check.outputs.editor_email }}
 
     steps:
     - name: Checkout repository
@@ -44,25 +42,6 @@ jobs:
         cat check_output.txt || true
         if grep -q "NEEDS_UPDATE=true" check_output.txt; then
           echo "needs_update=true" >> $GITHUB_OUTPUT
-
-          # Extract editor information from secure file (not from logs)
-          if [ -f ".editor_info" ]; then
-            EDITOR_NAME=$(python3 -c "import json; print(json.load(open('.editor_info'))['name'])" 2>/dev/null || echo "Unknown")
-            EDITOR_EMAIL=$(python3 -c "import json; print(json.load(open('.editor_info'))['email'])" 2>/dev/null || echo "")
-
-            # Mask sensitive data in logs
-            echo "::add-mask::${EDITOR_EMAIL}"
-
-            # Output to GitHub Actions (not visible in logs)
-            echo "editor_name=${EDITOR_NAME}" >> $GITHUB_OUTPUT
-            echo "editor_email=${EDITOR_EMAIL}" >> $GITHUB_OUTPUT
-
-            # Clean up sensitive file
-            rm -f .editor_info
-          else
-            echo "editor_name=Unknown" >> $GITHUB_OUTPUT
-            echo "editor_email=" >> $GITHUB_OUTPUT
-          fi
         else
           echo "needs_update=false" >> $GITHUB_OUTPUT
         fi
@@ -114,19 +93,10 @@ jobs:
       env:
         GOOGLE_CHAT_WEBHOOK: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
         GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-        EDITOR_NAME: ${{ needs.check-changes.outputs.editor_name }}
-        EDITOR_EMAIL: ${{ needs.check-changes.outputs.editor_email }}
       run: |
         TIMESTAMP=$(TZ='Africa/Lagos' date '+%Y-%m-%d %H:%M WAT')
         SHEET_URL="https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit"
-
-        # Format editor info - show name and email if available, otherwise just name
-        if [ -n "${EDITOR_EMAIL}" ] && [ "${EDITOR_EMAIL}" != "" ]; then
-          EDITOR_INFO="${EDITOR_NAME} (${EDITOR_EMAIL})"
-        else
-          EDITOR_INFO="${EDITOR_NAME}"
-        fi
-
+        
         curl -X POST "${GOOGLE_CHAT_WEBHOOK}" \
           -H 'Content-Type: application/json' \
           -d "{
@@ -139,15 +109,6 @@ jobs:
                 },
                 \"sections\": [{
                   \"widgets\": [
-                    {
-                      \"decoratedText\": {
-                        \"topLabel\": \"Updated By\",
-                        \"text\": \"${EDITOR_INFO}\",
-                        \"startIcon\": {
-                          \"knownIcon\": \"PERSON\"
-                        }
-                      }
-                    },
                     {
                       \"decoratedText\": {
                         \"topLabel\": \"Status\",

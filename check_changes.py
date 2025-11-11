@@ -93,35 +93,6 @@ def get_credentials():
         print(f"❌ Error loading credentials: {e}")
         sys.exit(1)
 
-def get_last_modifying_user(credentials, spreadsheet_id):
-    """Get the last user who modified the spreadsheet."""
-    try:
-        from googleapiclient.discovery import build
-
-        # Build Drive API service
-        drive_service = build('drive', 'v3', credentials=credentials)
-
-        # Get file metadata including last modifying user
-        file_metadata = drive_service.files().get(
-            fileId=spreadsheet_id,
-            fields='lastModifyingUser,modifiedTime'
-        ).execute()
-
-        last_user = file_metadata.get('lastModifyingUser', {})
-        modified_time = file_metadata.get('modifiedTime', '')
-
-        user_info = {
-            'name': last_user.get('displayName', 'Unknown'),
-            'email': last_user.get('emailAddress', ''),
-            'modified_time': modified_time
-        }
-
-        return user_info
-
-    except Exception as e:
-        print(f"⚠️ Could not get last modifying user: {e}")
-        return {'name': 'Unknown', 'email': '', 'modified_time': ''}
-
 def get_source_data_hash(spreadsheet_id, credentials, source_worksheets):
     """Get combined content hash of all source worksheets."""
     try:
@@ -218,17 +189,6 @@ def main():
         # Compare hashes
         if current_hash != last_hash:
             print("✅ Source data changes detected! Update needed.")
-
-            # Get who made the changes (don't print to avoid log exposure)
-            user_info = get_last_modifying_user(credentials, spreadsheet_id)
-
-            # Write editor info to separate file (not logged)
-            try:
-                with open('.editor_info', 'w') as f:
-                    json.dump(user_info, f)
-            except Exception as e:
-                print(f"⚠️ Could not save editor info: {e}")
-
             save_hash(current_hash)
             print("NEEDS_UPDATE=true")
             return True

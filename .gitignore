@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Temporary sensitive files
+.editor_info
+
 # Python
 __pycache__/
 *.py[cod]

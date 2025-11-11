@@ -50,10 +50,11 @@ jobs:
             EDITOR_NAME=$(python3 -c "import json; print(json.load(open('.editor_info'))['name'])" 2>/dev/null || echo "Unknown")
             EDITOR_EMAIL=$(python3 -c "import json; print(json.load(open('.editor_info'))['email'])" 2>/dev/null || echo "")
 
-            # Mask sensitive data in logs
+            # Mask sensitive data in logs (both name and email)
+            echo "::add-mask::${EDITOR_NAME}"
             echo "::add-mask::${EDITOR_EMAIL}"
 
-            # Output to GitHub Actions (not visible in logs)
+            # Output to GitHub Actions (not visible in logs due to masking)
             echo "editor_name=${EDITOR_NAME}" >> $GITHUB_OUTPUT
             echo "editor_email=${EDITOR_EMAIL}" >> $GITHUB_OUTPUT
 

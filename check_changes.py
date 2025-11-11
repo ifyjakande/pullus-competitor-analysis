@@ -226,15 +226,8 @@ def main():
             try:
                 with open('.editor_info', 'w') as f:
                     json.dump(user_info, f)
-                print("✅ Editor info captured successfully")
             except Exception as e:
                 print(f"⚠️ Could not save editor info: {e}")
-                # Create default file so workflow doesn't break
-                try:
-                    with open('.editor_info', 'w') as f:
-                        json.dump({'name': 'Unknown', 'email': ''}, f)
-                except:
-                    pass
 
             save_hash(current_hash)
             print("NEEDS_UPDATE=true")

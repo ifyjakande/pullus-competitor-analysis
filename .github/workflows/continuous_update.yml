@@ -47,23 +47,19 @@ jobs:
 
           # Extract editor information from secure file (not from logs)
           if [ -f ".editor_info" ]; then
-            echo "📄 Editor info file found, extracting data..."
             EDITOR_NAME=$(python3 -c "import json; print(json.load(open('.editor_info'))['name'])" 2>/dev/null || echo "Unknown")
             EDITOR_EMAIL=$(python3 -c "import json; print(json.load(open('.editor_info'))['email'])" 2>/dev/null || echo "")
 
-            # Mask sensitive data in logs (both name and email)
-            echo "::add-mask::${EDITOR_NAME}"
+            # Mask sensitive data in logs
             echo "::add-mask::${EDITOR_EMAIL}"
 
-            # Output to GitHub Actions (not visible in logs due to masking)
+            # Output to GitHub Actions (not visible in logs)
             echo "editor_name=${EDITOR_NAME}" >> $GITHUB_OUTPUT
             echo "editor_email=${EDITOR_EMAIL}" >> $GITHUB_OUTPUT
-            echo "✅ Editor info extracted and masked"
 
             # Clean up sensitive file
             rm -f .editor_info
           else
-            echo "⚠️ Editor info file not found, using defaults"
             echo "editor_name=Unknown" >> $GITHUB_OUTPUT
             echo "editor_email=" >> $GITHUB_OUTPUT
           fi
@@ -125,10 +121,7 @@ jobs:
         SHEET_URL="https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit"
 
         # Format editor info - show name and email if available, otherwise just name
-        # Handle empty or "Unknown" cases
-        if [ -z "${EDITOR_NAME}" ] || [ "${EDITOR_NAME}" = "Unknown" ]; then
-          EDITOR_INFO="System Update"
-        elif [ -n "${EDITOR_EMAIL}" ] && [ "${EDITOR_EMAIL}" != "" ]; then
+        if [ -n "${EDITOR_EMAIL}" ] && [ "${EDITOR_EMAIL}" != "" ]; then
           EDITOR_INFO="${EDITOR_NAME} (${EDITOR_EMAIL})"
         else
           EDITOR_INFO="${EDITOR_NAME}"

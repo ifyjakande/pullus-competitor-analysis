@@ -10,10 +10,25 @@ import binascii
 import json
 import os
 import sys
+import time
 import hashlib
 import gspread
+from gspread.utils import absolute_range_name, fill_gaps
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
+
+def api_call_with_backoff(func, *args, **kwargs):
+    """Call an API function, retrying rate-limit and server errors with backoff."""
+    for attempt in range(4):
+        try:
+            return func(*args, **kwargs)
+        except gspread.exceptions.APIError as e:
+            status = getattr(getattr(e, 'response', None), 'status_code', None)
+            if status not in (429, 500, 503) or attempt == 3:
+                raise
+            wait = 10 * (2 ** attempt)
+            print(f"API error {status}, retrying in {wait}s...")
+            time.sleep(wait)
 
 def load_env_file():
     """Load environment variables from .env file if it exists."""
@@ -97,14 +112,28 @@ def get_source_data_hash(spreadsheet_id, credentials, source_worksheets):
     """Get combined content hash of all source worksheets."""
     try:
         gc = gspread.authorize(credentials)
-        spreadsheet = gc.open_by_key(spreadsheet_id)
+        spreadsheet = api_call_with_backoff(gc.open_by_key, spreadsheet_id)
+
+        # Filter to worksheets that exist, preserving the old skip behavior
+        existing_titles = {ws.title for ws in api_call_with_backoff(spreadsheet.worksheets)}
+        found_worksheets = []
+        for worksheet_name in source_worksheets:
+            if worksheet_name in existing_titles:
+                found_worksheets.append(worksheet_name)
+            else:
+                print(f"⚠️ Worksheet '{worksheet_name}' not found, skipping")
 
         combined_content = []
 
-        for worksheet_name in source_worksheets:
-            try:
-                worksheet = spreadsheet.worksheet(worksheet_name)
-                all_values = worksheet.get_all_values()
+        if found_worksheets:
+            # Fetch all worksheets in one values batchGet call
+            ranges = [absolute_range_name(name) for name in found_worksheets]
+            response = api_call_with_backoff(spreadsheet.values_batch_get, ranges)
+
+            for worksheet_name, value_range in zip(found_worksheets, response.get('valueRanges', [])):
+                # fill_gaps pads the raw values the same way get_all_values() does,
+                # so the hashed content stays identical to before
+                all_values = fill_gaps(value_range.get('values', []))
 
                 # Add worksheet content to combined content
                 combined_content.append({
@@ -114,10 +143,6 @@ def get_source_data_hash(spreadsheet_id, credentials, source_worksheets):
 
                 rows_with_data = len([row for row in all_values if any(cell.strip() for cell in row)])
                 print(f"📊 {worksheet_name}: {rows_with_data} rows with data")
-
-            except gspread.WorksheetNotFound:
-                print(f"⚠️ Worksheet '{worksheet_name}' not found, skipping")
-                continue
 
         # Create hash of combined content
         content_str = str(combined_content)
